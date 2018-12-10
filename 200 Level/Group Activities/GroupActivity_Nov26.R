@@ -68,7 +68,7 @@ Rev_Grouped <- frontierData %>%
             Rev_per_Order=sum(EstimatedRevenue,na.rm = TRUE)/sum(OrderCount,na.rm = TRUE))
 
 
-ggplot(Rev_Grouped,aes(x=CallHour,y=Rev_per_Order,col=SearchEngine))+geom_line()
+ggplot(Rev_Grouped,aes(x=CallHour,y=Rev_per_Order,col=SearchEngine))+geom_line()+geom_point()
   
   
 frontierData %>%
@@ -87,7 +87,13 @@ frontierData %>%
 # on a call on average in CT for users on Chrome Mobile and Safari browsers?
 
 frontierData %>%
-  filter(OrderCount==1,State=="CT",Browser in ("Chrome"))
+  filter(OrderCount==1,
+         State=="CT",
+         Browser =="CHROME MOBILE "|Browser=="SAFARI") %>%
+         # Browser %in% c("CHROME MOBILE ","SAFARI")) %>%  
+  group_by(ProductsSold) %>%
+summarise(Avg_TT=mean(frontierData$TalkTimeMinutes)) 
+  
 
 
 head(RR_by_Date)

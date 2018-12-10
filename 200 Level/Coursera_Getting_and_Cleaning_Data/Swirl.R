@@ -12,6 +12,7 @@ packageVersion("dplyr")
 cran <- tbl_df(mydf)
 rm("mydf")
 cran
+?group_by
 ?select
 select(cran,ip_id,package,country)
 5:20
@@ -47,4 +48,61 @@ mutate(cran3,correct_size=size+1000)
 
 summarize(cran, avg_bytes = mean(size))
 
+by_package <- group_by(cran,package)
+by_package
 
+summarise(by_package,mean(size))
+quantile(pack_sum$count, probs = 0.99)
+
+top_counts <- filter(pack_sum,count>679)
+top_counts
+View(top_counts)
+
+
+top_counts_sorted <- arrange(top_counts,desc(count))
+View(top_counts_sorted)
+
+
+quantile(pack_sum$unique, probs = 0.99)
+
+top_unique <- filter(pack_sum,unique>465)
+View(top_unique)
+top_unique_sorted <- arrange(top_unique,desc(unique))
+View(top_unique_sorted)
+View(result3)
+submit()
+
+
+
+library(tidyr)
+6
+students
+?gather
+gather(students,sex,count,-grade)
+students2
+res <- gather(students2,key=sex_class,value=count,-grade)
+res
+?separate
+
+separate(res,col=sex_class,into=c("sex","class"))
+
+submit()
+students3
+?spread
+library(readr)
+parse_number("class5")
+
+students4
+submit()
+passed
+failed
+passed <- passed %>% 
+  mutate(status="passed")
+failed <- failed %>% 
+  mutate(status="failed")
+
+
+bind_rows(passed,failed)
+sat
+submit()
+2

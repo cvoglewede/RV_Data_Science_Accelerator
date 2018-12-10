@@ -86,6 +86,8 @@ pg2=GET(handle=google,path="search")
 # Quiz:
 
 # 1:
+library(httr)
+library(jsonlite)
 oauth_endpoints("github")
 my_app <- oauth_app(appname = "Coursera_API_Test"
                     ,key = "b68b43c4b7f65eff8dae"
