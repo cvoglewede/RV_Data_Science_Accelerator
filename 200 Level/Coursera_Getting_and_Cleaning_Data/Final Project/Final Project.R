@@ -1,46 +1,37 @@
 library("dplyr")
-library("ggplot2")
 library("readr")
-library("data.table")
-library("readxl")
-library("XLConnect")
-library("RMySQL")
-library("jsonlite")
-library("tidyr")
-library("lubridate")
-library("stringr")
-library("tidyverse")
 
 
+filename <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+t1 = tempdir()
+tf = tempfile(tmpdir=t1, fileext=".zip")
+download.file(filename, tf)
+unzip(tf, exdir=t1, overwrite=TRUE)
 
-setwd("/Users/cvoglewede/Downloads/UCI HAR Dataset 3/")
-
-
-feature_labels <- read.table("features.txt")
+feature_labels <- read.table(file.path(t1, "UCI HAR Dataset/features.txt"))
 feature_labels[,3] <- paste(feature_labels$V1," ",feature_labels$V2) 
 colnames(feature_labels)=c("Index","Feature","Unique Feature")
 
-activity_labels <- read_table("activity_labels.txt",col_names = FALSE)
+activity_labels <- read_table(file.path(t1, "UCI HAR Dataset/activity_labels.txt"),col_names = FALSE)
 colnames(activity_labels)=c("Index","activity")
 
-setwd("/Users/cvoglewede/Downloads/UCI HAR Dataset 3/train/")
-y_train <- read_table("y_train.txt",col_names = FALSE)
+
+y_train <- read_table(file.path(t1, "UCI HAR Dataset/train/y_train.txt"),col_names = FALSE)
 colnames(y_train)=c("Y_Label")
 
-x_train <- read_table("x_train.txt",col_names = FALSE)
+x_train <- read_table(file.path(t1, "UCI HAR Dataset/train/x_train.txt"),col_names = FALSE)
 
-subject_train <- read_table("subject_train.txt",col_names = FALSE)
+subject_train <- read_table(file.path(t1, "UCI HAR Dataset/train/subject_train.txt"),col_names = FALSE)
 colnames(subject_train)=c("Subject_Label")
 
 
-setwd("/Users/cvoglewede/Downloads/UCI HAR Dataset 3/test/")
 
-y_test <- read_table("y_test.txt",col_names = FALSE)
+y_test <- read_table(file.path(t1, "UCI HAR Dataset/test/y_test.txt"),col_names = FALSE)
 colnames(y_test)=c("Y_Label")
 
-x_test <- read_table("x_test.txt",col_names = FALSE)
+x_test <- read_table(file.path(t1, "UCI HAR Dataset/test/x_test.txt"),col_names = FALSE)
 
-subject_test <- read_table("subject_test.txt",col_names = FALSE)
+subject_test <- read_table(file.path(t1, "UCI HAR Dataset/test/subject_test.txt"),col_names = FALSE)
 colnames(subject_test)=c("Subject_Label")
 
 
@@ -65,21 +56,18 @@ Consolidated <- Training %>%
   rbind(Test)
 
 
-mean_cols_bool <- grepl("mean()",fixed=TRUE,colnames(Consolidated))
-sd_cols_bool <- grepl("std()",fixed=TRUE,colnames(Consolidated))
+mean_cols_boolean <- grepl("mean()",fixed=TRUE,colnames(Consolidated))
+sd_cols_boolean <- grepl("std()",fixed=TRUE,colnames(Consolidated))
 
-mean_cols <- colnames(Consolidated[mean_cols_bool])
-sd_cols <- colnames(Consolidated[sd_cols_bool])
+mean_cols <- colnames(Consolidated[mean_cols_boolean])
+sd_cols <- colnames(Consolidated[sd_cols_boolean])
 
 Trimmed <- Consolidated %>% 
   select(1:4,mean_cols,sd_cols)
 
 
 max(sapply(Trimmed, function(x) sum(is.na(x))))
-colnames(Trimmed)[!complete.cases(t(Trimmed))]
-
-# col_means <- sapply(Trimmed[5:70],function(x) mean(x))
-# col_sd <- sapply(Trimmed[5:70],function(x) sd(x))
+# Look for any missing values across all of the columns.
 
 
 Means_by_Subject <- Trimmed %>% 
@@ -87,21 +75,22 @@ Means_by_Subject <- Trimmed %>%
   summarise_all(funs(mean)) %>% 
   select(Subject_Label,5:70)
 
-Means_by_Subject
 
 Means_by_Activity <- Trimmed %>% 
   group_by(activity) %>% 
   summarise_all(funs(mean)) %>% 
   select(activity,5:70)
 
-Means_by_Activity
+
 
 Means_by_Subject_Activity <- Trimmed %>% 
   group_by(Subject_Label,activity) %>% 
   summarise_all(funs(mean)) %>% 
   select(Subject_Label,activity,5:70)
 
-Means_by_Subject_Activity
+TidyDataset <- Means_by_Subject_Activity
+
+
 
 
 
