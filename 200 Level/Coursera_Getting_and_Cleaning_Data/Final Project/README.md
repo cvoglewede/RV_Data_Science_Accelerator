@@ -137,7 +137,9 @@ The activity prompt is slightly ambiguous on which grouped dataset we're suppose
 `TidyDataset <- Means_by_Subject_Activity`
 
 
+## Writing Table
 
+Use `write.table(TidyDataset,"Tidy Dataset.txt",row.names = FALSE)` to create a .txt file to your working directory.
 
 
 

@@ -88,10 +88,8 @@ Means_by_Subject_Activity <- Trimmed %>%
 TidyDataset <- Means_by_Subject_Activity
 
 
-
-
-
-
+# Write Tidy Table
+write.table(TidyDataset,"Tidy Dataset.txt",row.names = FALSE)
 
 
 
