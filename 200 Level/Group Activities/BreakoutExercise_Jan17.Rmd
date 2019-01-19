@@ -1,0 +1,306 @@
+---
+title: "Accelerator Breakout Activity"
+author: "Otis"
+date: "1/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## R Markdown
+
+Material taken from r4ds ch. 7
+
+"There is no rule about which questions you should ask to guide your research" - Hadley  
+
+EDA is a unique part of data science in the sense that there's no exact science or process to EDA, sometimes you try something and it works, sometimes it's a dead end. Nothing is 'right' or 'wrong', just exploratory. Try to remember this as you go through the exercises and work on any EDA project if it gets tedious or frustrating. Even if you try X and hit a dead end, you at least now know that X doesn't apply to this dataset, so you can still take something away from it. 
+
+##### Useful definitions from r4ds:
+
+A _variable_ is a quantity, quality, or property that you can measure.
+
+A _value_ is the state of a variable when you measure it. The value of a variable may change from measurement to measurement.
+
+An _observation_ is a set of measurements made under similar conditions (you usually make all of the measurements in an observation at the same time and on the same object). An observation will contain several values, each associated with a different variable. I’ll sometimes refer to an observation as a data point.
+
+_Tabular data_ is a set of values, each associated with a variable and an observation. Tabular data is tidy if each value is placed in its own “cell”, each variable in its own column, and each observation in its own row.
+
+### Variation
+
+#### Categorical
+A variable is categorical if it can only take one of a small set of values. In R, categorical variables are usually saved as factors or character vectors. To examine the distribution of a categorical variable, use a bar chart:
+
+```{r}
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut))
+```
+
+#### Continuous
+
+A variable is continuous if it can take any of an infinite set of ordered values. Numbers and date-times are two examples of continuous variables. To examine the distribution of a continuous variable, use a histogram:
+```{r}
+ggplot(data = diamonds) +
+  geom_histogram(mapping = aes(x = carat), binwidth = 0.5)
+```
+
+
+
+You can set the width of the intervals in a histogram with the binwidth argument, which is measured in the units of the x variable
+
+```{r, warning = FALSE}
+smaller <- diamonds %>% 
+  filter(carat < 3)
+  
+ggplot(data = smaller, mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.1)
+```
+
+
+Another interesting thing you can do is combine continuous and categorical variables in a single plot to understand data distributions, as exemplified below
+```{r}
+ggplot(data = smaller, mapping = aes(x = carat, colour = cut)) +
+  geom_freqpoly(binwidth = 0.1)
+```
+
+
+#### Questions pt. 1
+
+1) In the bin-width example (above), why do you think Hadley filtered to carat < 3?
+
+  - There'd be too much data otherwise with .1 binwidth
+
+2) Using the quakes dataset (built into R) create a plot showing the distribution of earthquakes at different depths, do you see any trends?
+
+```{r}
+ggplot(quakes,aes(x=depth,y=mag))+geom_point()+ggtitle("Histogram of Earthquake Depths")
+```
+
+
+
+3) Using the iris dataset (built into R) create a plot showing the distribution of different species in the data set, do you see any trends?
+
+```{r}
+ggplot(iris,aes(x=Species))+geom_bar(fill="dark green")+ggtitle("Count of Floral Species")
+```
+
+
+4) Can you create a plot with the iris data set that uses the frequpoly function?
+
+```{r}
+
+ggplot(data = iris, mapping = aes(x = Petal.Length , color = Species)) +
+  geom_freqpoly(binwidth = 0.1)
+```
+
+
+Scroll down for Answers...
+
+
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+
+
+
+#### Answers pt 1)
+1) In the bin-width example, why do you think Hadley filtered to carat < 3?  
+There are a very small number of diamonds with carat > 3 and this creates a skewed graph, he did it just for aesthetic purposes.
+
+```{r}
+ggplot(data = diamonds, mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.1)
+```
+
+2) Using the quakes dataset (built into R) create a plot showing the distribution of earthquakes at different depths, do you see any trends?
+Exploring the data set we see that depth is a continuous variable so we want to use a histogram and it looks like 50 is a reasonable binwidth (other values also totally fine)
+```{r}
+quakes %>% 
+  ggplot(aes (x = depth)) + 
+  geom_histogram(binwidth = 50) + 
+  ggtitle("Distribution of Quakes by Depth")
+```
+
+
+3) Using the iris dataset (built into R) create a plot showing the distribution of different species in the data set, do you see any trends?  
+Exploring the data we see that Species is a factor variable, so we want to use a bar plot. The only 'trend' in these counts is that we're working with 50 types of each species, so we can assume that these were hand-selected or grown since if we just randomly picked 150 flowers from the wild the probability of exactly 50 of each time would be very low.
+```{r}
+iris %>%  
+  ggplot(aes(x = Species)) + 
+  geom_bar() + 
+  ggtitle("Count of Iris observed by Species")
+```
+
+
+4) Can you create a plot with the iris data set that uses the frequpoly function?  
+Exploring the data we have a categorical variable (Species) as well as a few continuous variables (Sepal.Length, Sepal.Width, Petal.Length, Petal.Width) to choose from. We can combine the categorical with any of the continuous to take advantage of the frequpoly function, choosing our own bin width: anywhere from 0.2 - 1 makes sense (if we chose 0.1 it would actually be like treating Sepal.Width as categorical since that is the most significant digit the data goes to)
+```{r}
+ggplot(data = iris, mapping = aes(x = Sepal.Width, colour = Species)) +
+  geom_freqpoly(binwidth = 0.2)
+```
+
+
+
+
+### Trends and Outliers
+
+Doing EDA will often reveal strange unexpected trends in the data, as well as possible outliers (either legitimate data that behaves weirdly, or data entry errors). Sometimes these can just be ignored, but other times they can have adverse effects on your data so it is worth trying to understand what is happening.
+
+The following plot produces a very interesting trend in the diamonds data set and Hadley raises some interesting questions to consider. Notice that we did this same plot earlier with a binwidth of 0.1 and this trend was not nearly as noticeable, the only way we would have gotten to it was by drilling down to such a samll level of detail:
+
+Why are there more diamonds at whole carats and common fractions of carats?
+
+Why are there more diamonds slightly to the right of each peak than there are slightly to the left of each peak?
+
+```{r}
+ggplot(data = smaller, mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.01)
+```
+
+Given that these diamonds are chosen at 'random' we would expect a distribution without such odd patterns. One possible explanation from this chart is that those who are sizing the diamonds have slightly skewed the data in favor of more nice-sounding diamond sizes. A 2 Carat diamond sounds a lot better and will sell for more than a 1.989 Carat diamond. 
+
+Outliers often show up but at very low frequencies, so the coord_cartesian() function in ggplot becomes useful in identifying the low count outliers. It can help us to identify some very odd values in the diamonds data set that we wouldn't expect under normal circumstances. Upon further digging (gone over in r4ds) we see that these actually stem from data entry errors.
+
+```{r}
+ggplot(diamonds) + 
+  geom_histogram(mapping = aes(x = y), binwidth = 0.5) +
+  coord_cartesian(ylim = c(0, 50))
+```
+
+
+```{r}
+
+
+```
+
+#### Questions pt 2)
+
+1) Using the flights dataset in the nycflights2013 library can you find any outliers in cancelled flights by date?  
+(hints: you will need to create your own date column, I recommend lubridate, sorry John. A 'cancelled' flight has a dep_time of NA)
+
+```{r}
+
+```
+
+
+
+2) For the largest 2 outliers, create a hypothesis on what may have caused them and do some quick research to determine if that is correct or not.
+
+Scroll down for Answers...
+
+
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+
+
+1) Using the flights dataset in the nycflights2013 library can you find any outliers in cancelled flights by date?
+
+```{r, include = FALSE}
+# Load the libraries
+library(nycflights13)
+library(lubridate)
+
+```
+
+```{r, warning = FALSE}
+
+
+flights %>% 
+  #Create a date column
+  mutate(the_date = ymd(paste(year, month, day, sep="-"))) %>% 
+  # Only look at cancelled flights
+  filter(is.na(dep_time)) %>% 
+  ggplot(aes (x = the_date)) + 
+  # Use a bar plot to treat each day as a categorical variable
+  geom_bar()
+
+flights %>% 
+  #Create a date column
+  mutate(the_date = ymd(paste(year, month, day, sep="-"))) %>% 
+  # Only look at cancelled flights
+  filter(is.na(dep_time)) %>% 
+  ggplot(aes (x = the_date)) + 
+  # We could also have used a histogram and R is smart enough to combine dates
+  geom_histogram(bins = 52)
+
+
+# Let's see what the specific dates are that we had so many delays in Feb
+flights %>% 
+  mutate(the_date = ymd(paste(year, month, day, sep="-"))) %>% 
+  filter(is.na(dep_time)) %>% 
+  group_by(the_date) %>% 
+  summarise(cancelled = n()) %>% 
+  arrange(desc(cancelled))
+
+
+```
+
+  
+2) For the largest 2 outliers, create a hypothesis on what may have caused them and do some quick research to determine if that is correct or not.
+
+So it's February, and it's NY, and it sometimes snows in February in NY, and snowstorms can cancel flights, let's see if there was a big snowstorm around then
+Googling "2013 blizzard february NY" returns this, seems reasonable:
+https://en.wikipedia.org/wiki/Early_February_2013_North_American_blizzard
