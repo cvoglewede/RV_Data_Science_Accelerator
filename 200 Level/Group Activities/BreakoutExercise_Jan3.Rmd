@@ -1,0 +1,155 @@
+---
+title: "R4DS_3.1_-_3.5"
+author: "Breakout Leaders"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 3.1: Introduction
+```{r tidyverse}
+library(tidyverse)
+```
+
+## 3.2: First Steps
+We want to use a graph to help us answer the following question: "Do cars with big engines use more fuel than cars with small engines?" 
+  
+This question can lead to additional questions. For instance, "What does the relationship between engine size and fuel efficiency look like? Is it positive? Negative? Linear? Nonlinear?"  
+  
+We're going to ue the preloaded mpg data set
+  
+```{r head}  
+head(mpg)
+```
+  
+This shows us the first 10 rows of the dataset so we can get an understanding of what columns are available.  
+We can see that `displ` is the size of the engine, measured in litres, and `hwy` is the mpg on the highway.  
+  
+So let's take a look at our first plot using ggplot:
+  
+```{r firstplot}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy))
+```
+  
+First off let's note that the graph is showing us a negative relationship between engine size and mpg. Now let's look at hw we knew to write out the command that we did.  
+  
+With ggplot2, you begin a plot with the function `ggplot()`. `ggplot()` creates a coordinate system that you can add layers to. The first argument of `ggplot()` is the dataset to use in the graph. So `ggplot(data = mpg)` creates an empty graph.  
+To complete your graph you add one or more layers to `ggplot()`. The function `geom_point()` adds a layer of points to your plot, which creates a scatterplot. ggplot2 comes with many geom functions that each add a different type of layer to a plot.    
+Each geom function in ggplot2 takes a mapping argument. This defines how variables in your dataset are mapped to visual properties. The mapping argument is always paired with `aes()`, and the x and y arguments of `aes()` specify which variables to map to the x and y axes.  
+  
+You can think about the following as a good template:
+```{r template, eval = FALSE}
+ggplot(data = <DATA>) + 
+  <GEOM_FUNCTION>(mapping = aes(<MAPPINGS>))
+```
+  
+  
+### Practice time! 
+  
+Can you do the following: ```Make a scatterplot of hwy vs cyl.```  
+   
+Answer:
+```{r firstanswer}
+ggplot(data = mpg) + geom_point(mapping = aes(x = hwy, y = cyl))
+```
+
+
+## 3.3: Aesthetic Mappings
+
+What if we want to add a third element to the graph we looked at previously? For instance, let's say we want to better understand if class has an effect on the relationship of engine size to mileage. We may even hypothesize that hybrid cars would appear as outliers.
+  
+To do this we must find a way to include a 3rd dimension in a two dimesional plot. One way to do this is through the use of color.
+  
+Lets plot the same graph but color the points differently based on class.
+  
+```{r secondplot}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy, color = class))
+```
+  
+Color of the points is something we call an "aesthetic". Other aesthetics include the shape of the points and the size of the points.
+  
+When you assign an aesthetic a variable (in this case we assigned the class variable to the color aesthetic) a process known as `scaling` takes place. This ig ggplot2 assigning a unique "level" to each value in the variable (in this case a unique color for each class).
+  
+We can also set our aesthetics manually. For instance, let's say we want all of our points to be blue. the following plot would achieve this:
+  
+```{r thirdplot}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy), color = "blue")
+```
+  
+Notice that this time we use `color` as an argument of the `geom_point()` function and not the `aes()` function. When setting aesthetics manually they go outside of the `aes()` function.  
+  
+Finally, if we know we want multiple geom types with the same aestheitcs, we can set them universally in the `ggplot()` function. This will allow them to persist through all our `geom_()` function calls. See below for an example:  
+  
+```{r extraplot}
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy, color = class)) + geom_point() + geom_line()
+```
+
+  
+### Ok, practice time again!
+  
+What happens if you map an aesthetic to something other than a variable name, like `aes(shape = displ < 5)`? Note, you’ll also need to specify x and y.
+  
+Answer:
+```{r secondanswer}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy, shape = displ < 5))
+```
+  
+  
+## 3.4: Common Problems
+  
+As you're writing R code you will inevitably run into problems. Here are some handy things to keep in mind as you interact with ggplot2 to hopefully minimize your time spent troubleshooting: 
+  
+1. The `+` has to go at the end of a line, not the beginning.  
+2. If your console has a `+` on the left hand side it means R doesn't think you've completed a command yet. Use ESCAPE and start over again.  
+3. Don't forget to use `?function_name` for documentation and examples if you ever forget how to use a particular function.  
+4. In RStudio you can always go to Help > Cheatsheets > Data Visualization with ggplot2 for a helpful cheatsheet on the best ways to use ggplot2.  
+  
+## 3.5 Facets
+  
+While we've already seen that adding a 3rd element to a 2-dimensional plot can be achieved through aesthetics, another way we can do this (especially useful for categorical variables) is through `Facets`. Facets are subplots broken up by a particular variable so rather than color the points differently based on values you would have multiple plots with only the points that pertain to that value.  
+  
+To facet your plot by a single variable, use `facet_wrap()`. The first argument of `facet_wrap()` should be a formula, which you create with `~` followed by a variable name.  
+  
+For example:  
+```{r fourthplot}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy)) + 
+  facet_wrap(~ class, nrow = 3)
+```
+  
+But what if we want to facet on two variables?  
+  
+To facet your plot on the combination of two variables, add facet_grid() to your plot call. The first argument of facet_grid() is also a formula. This time the formula should contain two variable names separated by a ~.  
+  
+See here:  
+```{r fifthplot}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy)) + 
+  facet_grid(drv ~ cyl)
+```
+  
+  
+Additionally, if you'd prefer to facet on columns instead of rows just throw a `.` at the front of the formula like so:  
+```{r sixthplot}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy)) + 
+  facet_grid(. ~ class)
+```
+  
+### Let's Do More Practice!
+  
+What do the empty cells in plot with facet_grid(drv ~ cyl) mean? How do they relate to this plot?
+
+```{r example, eval = FALSE}
+ggplot(data = mpg) + 
+  geom_jitter(mapping = aes(x = drv, y = cyl), width = .4, height = .5)
+```
+  
+  
+## Final Thoughts:
+  
+Where can you make use of ggplot today? How would this be helpful to you in your current role? What other types of graphs besides scatterplots might be useful in visualizing data?  
+  
+Stay tuned for another lesson next week.
