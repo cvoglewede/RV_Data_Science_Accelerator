@@ -1,0 +1,365 @@
+---
+title: "r4ds_7.4-7.8_breakout_exercises"
+author: "Chris Sirico"
+date: "1/18/2019"
+output: html_document
+---
+
+```{r setup, hide = TRUE, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
+library(tidyverse)
+library(hexbin)
+library(viridis)
+```
+## Handling missing values
+
+Last week we touched on outlier values, what they mean and a couple ways of dealing with them--by replacing them with missing values or dropping them altogether (the least desireable option). Either of these steps should be documented in code comments, a README or a separate documentation article for your project (e.g. on Confluence).
+
+Drop a row with outlier data.
+```{r drop-rows}
+diamonds2 <- diamonds %>% 
+  filter(between(y, 3, 20))
+```
+
+Or you could replace with a missing value.
+```{r replace-with-missing}
+diamonds2 <- diamonds %>% 
+  mutate(y = ifelse(y < 3 | y > 20, NA, y))
+```
+
+Or you could impute the data with the mean or another value.
+```{r}
+diamonds2 <- diamonds %>% 
+  mutate(y = ifelse(y < 3 | y > 20, mean(diamonds$y, na.rm = T), y))
+```
+
+
+This week we'll discuss missing values themselves. R primary uses `NA` values to represent these, whereas SQL uses `null`s. These values may be missing because they were outliers you chose to replace. They may have gone missing by some accident in collection, storage or transfer. Or they may be missing for some structural reason related to the data. It's important to think critically about the meaning of missing values in your data, and  domain knowledge is key.
+
+Exercises
+
+- Run `class(NA)` in the R console. What data type is an NA value in R?
+- Run `?NA` in the console in RStudio to see the documentation. What else does it say about NAs?
+
+```{r}
+?NA
+
+```
+
+
+NA is a logical constant of length 1 which contains a missing value indicator. NA can be coerced to any other vector type except raw. There are also constants NA_integer_, NA_real_, NA_complex_ and NA_character_ of the other atomic vector types which support missing values: all of these are reserved words in the R language.
+
+
+
+
+- What does `is.na()` do? What does the parameter `na.rm` accomplish in the imputation above?
+- How could you calculate the percentage of a vector that is missing? Start with `missingVec <- c(1,0,8,20,84,2,94,NA,20,NA,1,0,8,20,84,3,20,NA,10,84,20,82,6,94,NA,20,NA)`
+
+```{r}
+missingVec <- c(1,0,8,20,84,2,94,NA,20,NA,1,0,8,20,84,3,20,NA,10,84,20,82,6,94,NA,20,NA)
+sum(is.na(missingVec))
+length(missingVec)
+sum(is.na(missingVec))/length(missingVec)
+```
+
+
+- Read the definitions for MCAR, MAR and MNAR data on [Wikipedia](https://en.wikipedia.org/wiki/Missing_data). What do the abbreviations stand for? Which is easier to deal with and which is most difficult? Can you think of an RV example of MAR or MNAR data?
+BONUS: Find or think of some additional examples of MAR and MNAR data, or research methods / packages for dealing with such data. 
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+Answers:
+
+`NA` is type `logical`, although there are specific `NA` types for other data types that a logical `NA` can be coerced to. `mean(is.na(df$columnName))` will return the proportion of a given column in a dataset that is missing. You could multiply by 100 to get the percentage.  
+
+MCAR data is easiest to deal with, while MNAR data is the most difficult. MCAR data can be easily imputed with the mean, median, 0s or some more sophisticated method. It could even be dropped with little concern. 
+  
+  
+## Covariation
+
+Covariation is when two variables move together. This can happen with any combination of numeric and categorical variables. Visualization is a great way to identify covariation.  
+
+### Why we care: 👍 finding predictors | 👎 model interpretation issues
+Covariation is essentially what we're looking for when we try to predict for a target variable. On the other hand, it's important to know whether variables other than the target variable move together. Think of the heights and weights of patients in a medical study, where perhaps we aim to predict age. Another example: square footage and number of bedrooms in real estate data used to predict price. Model features (variables that are not the target we're trying to predict) that are covariate are called "collinear".  
+
+Collinearity doesn't necessarily degrade model performance for business predictions, but it causes squirreliness when interpreting coefficients in linear regression models. The sign of one variable may flip counter to that variable's actual relationship with the target because of the presence of another collinear feature in the model. Collinearity can also make _feature importances_ from tree-based models less reliable.  
+
+### Covariation viz: categorical and continuous variables
+
+You can explore relationships between categorical and a continuous variables using the following plots, among others:
+
+- *frequency line plot* (`geom_freqpoly()`)
+- *density plot* (`geom_density()`) _Similar to above, but standardizes each variable so the area beneath is 1. See the `fair` category in the plots below._
+- *box plot* (`geom_box()`)
+
+frequency plot  
+```{r frequency}
+ggplot(data = diamonds, mapping = aes(x = price)) + 
+  geom_freqpoly(mapping = aes(colour = cut), binwidth = 500)
+```
+
+density plot  
+```{r density}
+ggplot(data = diamonds, mapping = aes(x = price, y = ..density..)) + 
+  geom_freqpoly(mapping = aes(colour = cut), binwidth = 500)
+```
+
+```{r boxplot}
+knitr::include_graphics("images/EDA-boxplot.png")
+```
+
+boxplot  
+```{r}
+ggplot(data = diamonds, mapping = aes(x = cut, y = price)) +
+  geom_boxplot()
+```
+
+Notice the overplotted outliers on the high end of plot above. The violin plot is a variation on the box plot that shows more of the contour of a histogram and deals well with larger data.
+
+violin plot  
+```{r}
+ggplot(data = diamonds, mapping = aes(x = cut, y = price)) +
+  geom_violin()
+```
+
+###
+
+
+You can check for covariation amongst 2 or more continuous variables with *pairs plots* and *correlation matrices*.
+
+### Covariation viz: 2 categorical variables
+
+You can use `geom_counts()` to create a grid of categorical variables with size representing count.  
+
+```{r geom_count}
+ggplot(data = diamonds) +
+  geom_count(mapping = aes(x = cut, y = color))
+```
+
+Here's a similar technique using manual counts and `geom_tile()`:  
+```{r}
+diamonds %>% 
+  count(color, cut) %>%  
+  ggplot(mapping = aes(x = color, y = cut)) +
+    geom_tile(mapping = aes(fill = n))
+```
+
+
+### Covariation viz: 2 continuous variables
+
+The go-to method for plotting continuous variables against one another, scatter plots, is a fundamential technique for covariation. Pairs plots, binned box plots, and binned tile/hex plots build on this method. Let's see some examples.
+
+Here's a base-R `pairs()` plot with the `mpg` data. These plots sometimes need to be expanded to show sufficient detail. They work best with small data. Look for plots that suggests diagonal regression line.
+
+```{r pairs}
+# pairs(mpg)  # Won't work. pairs() doesn't like categoricals. Dummy variables are an option, but let's just drop. 
+
+mpgNumerics <- mpg %>%
+  select(-model, -manufacturer, -trans, -drv, -fl, -class)
+
+pairs(mpgNumerics)
+install.packages("GGally")
+library(GGally)
+ggpairs(mpgNumerics)
+ ```
+
+#### Correlation matrices
+
+A correlation matrix essentially summarizes the findings of a pairs plot by calculating the correlation of each pair of variables. Correlation matrices can help identify trends where data is bigger or where points tend to overplot (e.g. a boolean or a numeric with few discrete values).  
+
+Compare the matrix below to the plot above.
+
+```{r correlation-matrix}
+cor(mpgNumerics) #gener
+```
+
+More about correlation and pairs plots [here](http://www.sthda.com/english/wiki/correlation-matrix-a-quick-start-guide-to-analyze-format-and-visualize-a-correlation-matrix-using-r-software#r-functions).
+
+### VIF - Variance Inflation Factors
+
+If there's a gold standard for examining colinearity, it's by calculating the VIF of your variables. It's calculated by regressing each predictor on all others being used in the regression. If your other variables do a good job of explaining a given variable, it's collinear. The rule of thumb is to use variables with VIF less than 10 for models with acceptable interpretability.
+
+```{r vif}
+# install("car")
+# library()
+car::vif(lm(price ~ carat + cut, data = diamonds))
+```
+```{r}
+# size and weight are collinear
+car::vif(lm(price ~ carat + cut + color + y + x, data = diamonds)) 
+```
+
+
+#### Other flavors
+
+```{r hexbin}
+smaller <- diamonds %>% 
+  filter(carat < 3)
+
+# install.packages("hexbin")
+ggplot(data = smaller) +
+  geom_hex(mapping = aes(x = carat, y = price)) +
+  scale_fill_viridis() # the viridis color scheme is better than default
+```
+```{r alpha}
+ggplot(data = diamonds) + 
+  geom_point(mapping = aes(x = carat, y = price), alpha = 1 / 100)
+```
+
+```{r}
+ggplot(data = smaller, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.1)))
+```
+
+
+
+*Exercises*
+
+- What's the difference between the `freqpoly` and `density` plots above? 
+- What does the density plot show that's harder to see in the freqpoly?
+- Create a hypothesis about why. Do some digging to confirm or refute your hypothesis.
+- Combine two of the techniques you’ve learned to visualise the combined distribution of cut, carat, and price.
+- Two dimensional plots reveal outliers that are not visible in one dimensional plots. For example, some points in the plot below have an unusual combination of x and y values, which makes the points outliers even though their x and y values appear normal when examined separately.
+```{r}
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = x, y = y)) +
+  coord_cartesian(xlim = c(4, 11), ylim = c(4, 11))
+```
+
+Why is a scatterplot a better display than a binned plot for this case?
+
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+.  
+Density and boxplots shows that ideal diamonds, the worst cut, nevertheless have higher prices. This is probably because there's an inverse relationship between diamond clarity and size. In this case, both features would be important to a multiple regression predicting price, and both would have interpretable coefficients. See 24.2 in r4ds for [more about why low quality diamonds are more expensive](https://r4ds.had.co.nz/model-building.html).
+
+carat, cut & price
+```{r alpha-color}
+ggplot(data = diamonds) + 
+  geom_point(mapping = aes(x = carat, y = price, color = cut), alpha = .15)
+```
+
+A binned plot shows outliers less distinctly.
+```{r binned-outliers}
+ggplot(data = diamonds) +
+  geom_boxplot(mapping = aes(x = x, y = y, group = cut_width(x, 2))) +
+  coord_cartesian(xlim = c(4, 11), ylim = c(4, 11))
+```  
+  
+BONUS: after breakout, run a correlation of the two variables `y` (a size dimension) and `cut` and run the regression itself to get the resulting coefficients.
+
+
+## Patterns & Models
+
+The following code fits a model that predicts price from carat and then computes the residuals (the difference between the predicted value and the actual value). The residuals give us a view of the price of the diamond, once the effect of carat has been removed.
+
+```{r carat-model}
+library(modelr)
+
+# train a linear regression model to predict price using carat
+mod <- lm(log(price) ~ log(carat), data = diamonds) 
+
+# subtract predictions from actuals to find residuals
+diamonds2 <- diamonds %>% 
+  add_residuals(mod) %>% 
+  mutate(resid = exp(resid))
+
+# residuals plot -- useful for identifying trends not found by model
+ggplot(data = diamonds2) + 
+  geom_point(mapping = aes(x = log(carat), y = resid))
+```
+
+If the above model had captured all relevant relationships, the resulting residuals plot would have just shown random noise. Instead, we can see there is still something pushing up the price of some small diamonds and pushing down the price of most large ones. Now that we've removed the confounding colinear variable `carat`, the most predictive variable related to `price`, we can get a more accurate look at the relationships between `cut` and `color` in relation to `price`.
+
+```{r}
+ggplot(data = diamonds2) + 
+  geom_boxplot(mapping = aes(x = cut, y = resid))
+```
+
+This is what's going on when economists and researchers talk about controlling for a variable.
