@@ -93,7 +93,7 @@ HGUdata_raw[HGUdata_raw$chol==max(HGUdata_raw$chol)|HGUdata_raw$thalach==min(HGU
 
 # Convert to Factors
 
-outcome <- HGUdata_raw$num
+outcome <- as.factor(HGUdata_raw$num)
 
 sex_key <- c("1" = "male", "0" = "female")
 cp_key <- c("1" = "typical angina", "2" = "atypical angina","3"="non_anginal pain", "4"="asymptomatic")
@@ -133,13 +133,15 @@ HGUdata_ready <- HGUdata_complete %>%
   select(-c(sex,cp,fbs,restecg,exang,sex_female,cp_asymptomatic,fbs_low_fasting_blood_sugar,exang_no))
 
 
-# Modeling
+# Model Prep
 
 set.seed(9595)
 train_ind <- sample.split(HGUdata_ready,SplitRatio = .8)
 train <- subset(HGUdata_ready,train_ind ==TRUE)
 test <- subset(HGUdata_ready,train_ind ==FALSE)
 
+
+# Logistic Regression
 set.seed(1192)
 model_logistic <- glm(outcome~.,data=train,family = binomial)
 summary(model_logistic)
@@ -147,6 +149,13 @@ anova(model_logistic, test="Chisq")
 
 
 train$prob_logistic <- predict(model_logistic, type="response")
+classification_point <- .5
+train$pred_class <- as.factor(ifelse(train$prob_logistic>classification_point,1,0))
+
+confusionMatrix(data = train$pred_class, 
+                reference = train$outcome)
+
+
 pr <- prediction(train$prob_logistic, train$outcome)
 prf <- performance(pr, measure = "tpr", x.measure = "fpr")
 plot(prf)
@@ -155,3 +164,7 @@ auc <- auc@y.values[[1]]
 auc
 
 ggplot(train,aes(prob_logistic,fill=as.factor(outcome)))+geom_density(alpha=.7)
+
+
+
+
