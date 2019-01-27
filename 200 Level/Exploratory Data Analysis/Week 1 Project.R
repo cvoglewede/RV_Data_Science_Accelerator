@@ -1,15 +1,14 @@
 
-
 # title: "Coursera Exploratory Data Analysis Week 1 Project"
 # author: "Connor Voglewede"
-# date: "1/19/2019"
-# output: R script
+# date: "1/27/2019"
+# output: Plot1.R, Plot1.png
 
-  
+
 # Load required packages
 
-library(tidyverse)
-library(lubridate)
+require(tidyverse)
+require(lubridate)
 
 # download Zip file and extract .txt file
 
@@ -81,3 +80,6 @@ legend("topright",legend=c(names(epc4)[7:9]),col=c(1,2,4),bty="n",lty=1)
 # bottom right
 plot(epc4$DateTime,epc4$Global_reactive_power,type="l",xlab="datetime",ylab=names(epc4$Global_reactive_power))
 
+
+dev.copy(png,'plot1.png')
+dev.off()
