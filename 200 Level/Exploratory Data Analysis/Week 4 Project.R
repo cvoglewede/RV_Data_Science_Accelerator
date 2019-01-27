@@ -57,23 +57,62 @@ barplot(question2$TotalEmissions,names.arg=question2$year,xlab="Year",ylab="PM2.
   subset(fips=="24510") %>% 
   group_by(year,type) %>% 
   summarise(TotalEmissions=sum(Emissions)) %>% 
-  ggplot(aes(x=year,y=TotalEmissions,col=type))+geom_line()
+  ggplot(aes(factor(year),y=TotalEmissions,fill=type))+geom_bar(stat="identity")+facet_wrap(.~type)
 
+ 
 
  # Question 4
  
  # Across the United States, how have emissions from coal combustion-related sources changed from 1999–2008?
 
 SCC$SCC <- as.character(SCC$SCC)
-SCC$Short.Name <- as.character(SCC$Short.Name)
 
- # NEI %>% 
- #   merge(SCC,by.x="SCC",by.y="SCC",all=TRUE) %>% 
- #   group_by(Short.Name) %>% 
- #   summarise(TotalEmissions=sum(NEI$Emissions))
- # 
- #    is.recursive(SCC$Short.Name)
+SCC$CoalComb <- ifelse(SCC$EI.Sector=="Fuel Comb - Comm/Institutional - Coal","Coal Combusion","Other")
+SCC_Codes_CoalComb <- subset(SCC,CoalComb=="Coal Combusion")[,"SCC"]
+
+
+ NEI %>%
+   subset(SCC %in% SCC_Codes_CoalComb) %>% 
+   group_by(year) %>%
+   summarise(TotalEmissions=sum(Emissions)) %>% 
+   ggplot(aes(factor(year),y=TotalEmissions,fill=year))+geom_bar(stat="identity")
  
-#   head(SCC)
-# head(SCC$SCC)  
-# levels(SCC$Option.Group)
+# Question 5
+
+# How have emissions from motor vehicle sources changed from 1999–2008 in Baltimore City?
+ 
+SCC$MotorVehicle <- ifelse(grepl("Mobile - On-Road",SCC$EI.Sector,fixed=TRUE),"Motor Vehicle","Other")
+SCC_Codes_Vehicle <- subset(SCC,MotorVehicle=="Motor Vehicle")[,"SCC"]
+
+
+ NEI %>% 
+   subset(fips=="24510" & SCC %in% SCC_Codes_Vehicle) %>% 
+   group_by(year) %>% 
+   summarise(TotalEmissions=sum(Emissions)) %>% 
+   ggplot(aes(factor(year),y=TotalEmissions))+geom_bar(stat="identity")
+ 
+ 
+ # Question 6
+ 
+ # Compare emissions from motor vehicle sources in Baltimore City with emissions from motor vehicle sources in Los Angeles County, California (\color{red}{\verb|fips == "06037"|}fips=="06037"). Which city has seen greater changes over time in motor vehicle emissions?
+ 
+ data <- NEI %>% 
+   subset((fips=="24510"|fips=="06037") & SCC %in% SCC_Codes_Vehicle) %>% 
+   mutate(city=ifelse(fips=="24510","Baltimore, MD","Los Angeles, CA")) %>% 
+   group_by(year,city) %>%
+   summarise(TotalEmissions=sum(Emissions)) %>% 
+   spread(key=city,TotalEmissions)
+
+data$`Baltimore,MD Delta` <- (data$`Baltimore, MD` - lag(data$`Baltimore, MD`))/lag(data$`Baltimore, MD`)
+data$`Los Angeles, CA Delta` <- (data$`Los Angeles, CA` - lag(data$`Los Angeles, CA`))/lag(data$`Los Angeles, CA`)
+data$`Baltimore,MD Delta`[1] <- 0
+data$`Los Angeles, CA Delta`[1] <- 0
+
+
+data %>% 
+  select(year,`Baltimore,MD Delta`,`Los Angeles, CA Delta`) %>% 
+  rename("Baltimore, MD"="Baltimore,MD Delta","Los Angeles, CA"="Los Angeles, CA Delta") %>% 
+  gather(key="city",value="delta",-year) %>% 
+  ggplot(aes(year,y=delta,color=city))+geom_line()
+ 
+ 
