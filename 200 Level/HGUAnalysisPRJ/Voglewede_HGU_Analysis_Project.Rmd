@@ -235,14 +235,17 @@ dummies <- cbind(dummy_sex,dummy_cp,dummy_fbs,dummy_restecg,dummy_exang)
 HGUdata_ready <- cbind(HGUdata_complete,dummies,outcome)
  
 HGUdata_ready <- HGUdata_ready[ ,c(1,4,5,8,10,12,14,15,16,17,19,21,23,24)]
-
+```
+```{r,include=FALSE}
 # For markdown... 
-names(HGUdata_ready)
 cols <- c("age","trestbps","chol","thalach","oldpeak","sex_male","cp_atypical_angina","cp_non_anginal_pain","cp_typical_angina","fbs_high_fasting_blood_sugar","restecg_left_ventricular_hypertrophy","restecg_ST_T_wave_abnormality","exang_yes","outcome")
 names(HGUdata_ready) <- cols
-head(HGUdata_ready)
+
 ```
 
+```{r}
+head(HGUdata_ready)
+```
 
 
 ## Part 2: Modeling and Results
