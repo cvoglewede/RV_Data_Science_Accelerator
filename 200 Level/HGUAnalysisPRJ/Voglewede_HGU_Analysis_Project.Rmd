@@ -1,0 +1,419 @@
+---
+title: "Connor Voglewede’s HGU Analysis Project"
+author: "Connor Voglewede"
+date: "1/27/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+The goal of this exercise to contruct a model that classifies individuals by likelihood of having a diagnosis of heart disease. The data was collected from an unknown source and includes 10 variables for each patient as well as the indicator of whether or not they were diagnosed with heart disease.
+
+## Part 1: Cleaning and Exploring the Data
+
+# Required Packages
+
+I use a number of packages to clean, visualize, and model the data. Those packages are listed below:
+
+
+```{r,echo=TRUE,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(dummies)
+library(mice)
+library(caTools)
+library(caret)
+library(stringr)
+library(ROCR)
+library(corrplot)
+library(popbio)
+library(GGally)
+```
+
+## Exploratory Data Analysis
+
+
+```{r}
+HGUdata_raw <- read.csv("HDdata.csv",header = TRUE)
+head(HGUdata_raw)
+```
+
+The data is stored as a csv and can be read in use read.csv.
+
+
+```{r}
+str(HGUdata_raw)
+summary(HGUdata_raw)
+```
+
+At first glance, the data already looks pretty clean. There are some missing age values that we'll address later, but no other variables are missing data. There are several categorical variables encoded as numerical values, so we'll work on encoding those most descriptively later.
+
+
+```{r,message=FALSE, warning=FALSE}
+ggpairs(HGUdata_raw)
+```
+
+A quick glance at the pair-wise relationships in the variables doesn't reveal anything particularly alarming or revelatory. Most of the continuous variables look approximately normally distributed. There don't appear to be significant correlations between explanatory variables or the outcome variable 'num'. From this view, it's hard to see the relationships of the independent variables on 'num'.
+
+```{r}
+HGUdata_raw %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients)
+```
+
+The first thing I want to understand is the prevalence of the diagnosis rate of heart diseases to see if this is a balanced class problem or if heart diagnosis is a rare event. At 46% prevalence, I'm comfortable saying this dataset is balanced.
+
+
+```{r,warning=FALSE,echo=FALSE}
+
+ggplot(HGUdata_raw,aes(x=num, y=age,fill=as.factor(num))) + geom_boxplot()+ labs(x="Diagnosis",y="age")+ guides(fill=guide_legend(title=NULL))
+
+HGUdata_raw %>% 
+  group_by(age) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=age,y=rate))+geom_point() + labs(x="Age",y="Heart Disease Rate")
+
+HGUdata_raw %>% 
+  mutate(age_bin = ntile(age, 20)) %>% 
+  group_by(age_bin) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=age_bin,y=rate))+geom_point()+geom_smooth(method='lm',formula=y~x)+ labs(x="Age Ventile",y="Heart Disease Rate")
+
+
+
+```
+
+The first variable to look deeper at is age. From the boxplot, there don't appear to be any outliers and it seems that the average age of positive diagnosis patient is higher than that of negative diagnosis patients.
+
+Going further, we can bin ages and look at the relationship between the bins and the rate of heart disease diagnosis. Binning by age value leads to some bins having a small sample size, but evidence is there for the positive relationship between age and diagnosis rate.
+
+Grouping age by ventiles helps further illustrate the positive relationship and suggests a mostly linear relationship between age and Heart Disease Rate. The relationship does shift at around the 65th percentile or 65 years old. There seems to be a jump in prevalence that then decreases with with even more years. Without using a spline, I'm comfortable with calling this a linear relationship for modeling purposes.
+
+```{r,echo=FALSE}
+HGUdata_raw %>% 
+  group_by(sex) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=sex,y=rate,fill=patients))+geom_bar(stat="identity")+ labs(x="Sex",y="Heart Disease Rate")
+
+
+HGUdata_raw %>% 
+  group_by(cp) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=cp,y=rate,fill=patients))+geom_bar(stat="identity")+ labs(x="Chest Pain Type",y="Heart Disease Rate")
+
+HGUdata_raw %>% 
+  group_by(fbs) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=fbs,y=rate,fill=patients))+geom_bar(stat="identity")+ labs(x="Fasting Blood Sugar >120 ",y="Heart Disease Rate")
+
+HGUdata_raw %>% 
+  group_by(restecg) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=restecg,y=rate,fill=patients))+geom_bar(stat="identity")+ labs(x="EC Result Category",y="Heart Disease Rate")
+
+HGUdata_raw %>% 
+  group_by(exang) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=exang,y=rate,fill=patients))+geom_bar(stat="identity")+ labs(x="Exercise Induced Angina",y="Heart Disease Rate")
+
+```
+
+
+With these categorical variables, I wanted to get a sense not just how they correlate with the heart disease rate but also the distribution of patients within each variable. Of particular not, asymptomatic chest pain is strongly correlated with heart diseases, far moreso than other chest pain types. Also, male patients were diagnosed with heart disease at a rate almost twice of females.
+
+
+```{r,echo=FALSE}
+
+ggplot(HGUdata_raw,aes(x=num, y=trestbps,fill=as.factor(num))) +  geom_boxplot()+ labs(x="Diagnosis",y="Resting Blood Pressure")+ guides(fill=guide_legend(title=NULL))
+HGUdata_raw %>% 
+  mutate(trestbps_bin = ntile(trestbps, 20)) %>% 
+  group_by(trestbps_bin) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=trestbps_bin,y=rate))+geom_point() + labs(x="Resting Blood Pressure",y="Heart Disease Rate")
+
+
+
+ggplot(HGUdata_raw,aes(x=num, y=chol,fill=as.factor(num))) +  geom_boxplot()+ labs(x="Diagnosis",y="Serum Cholestorol level")+ guides(fill=guide_legend(title=NULL))
+HGUdata_raw %>% 
+  mutate(chol_bin = ntile(chol, 20)) %>% 
+  group_by(chol_bin) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=chol_bin,y=rate))+geom_point()+ labs(x="Serum Cholestorol level",y="Heart Disease Rate")
+
+```
+
+There doesn't appear to be a strong relationship between resting blood pressure or cholestorol level and the rate of heart disease diagnosis. However, it seems that there is one cholestorol value that is an outlier relative to the rest of the sample.
+
+
+
+```{r,echo=FALSE}
+
+ggplot(HGUdata_raw,aes(x=num, y=thalach,fill=as.factor(num))) +  geom_boxplot()+ labs(x="Diagnosis",y="Maximum Heart Rate")+ guides(fill=guide_legend(title=NULL))
+HGUdata_raw %>% 
+  mutate(thalach_bin = ntile(thalach, 20)) %>% 
+  group_by(thalach_bin) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=thalach_bin,y=rate))+geom_point()+geom_smooth(method='lm',formula=y~x) + labs(x="Maximum Heart Rate",y="Heart Disease Rate")
+
+
+
+
+ggplot(HGUdata_raw,aes(x=num, y=oldpeak,fill=as.factor(num))) +  geom_boxplot()+ labs(x="Diagnosis",y="ST Depression")+ guides(fill=guide_legend(title=NULL))
+HGUdata_raw %>% 
+  mutate(oldpeak_bin = ntile(oldpeak, 20)) %>% 
+  group_by(oldpeak_bin) %>% 
+  summarise(patients=n(),cases=sum(num),rate=cases/patients) %>% 
+  ggplot(aes(x=oldpeak_bin,y=rate))+geom_point()+geom_smooth(method='lm',formula=y~x)+ labs(x="ST Depression",y="Heart Disease Rate")
+
+```
+
+Both Maximum heart rate and ST Depression seem to have linear relationships with heart disease rate.
+
+```{r}
+max(HGUdata_raw$chol)
+(max(HGUdata_raw$chol)-mean(HGUdata_raw$chol))/sd(HGUdata_raw$chol)
+HGUdata_raw <- HGUdata_raw[-246,]
+```
+
+I wanted to take a longer look at the outlier identified earlier. The high value of cholestorol level was 564 mg/dl, 6 standard deviations above the mean. I'm going to proactively remove this entry from the sample.
+
+# Pre-Processing
+
+Before I get to any treatment of the missing values, I want to re-assign the outcome varibale and categorical variables into factors with some more interpretable naming conventions as well.
+
+```{r}
+outcome <- factor(as.factor(HGUdata_raw$num),levels=c("0","1"))
+
+sex_key <- c("1" = "male", "0" = "female")
+cp_key <- c("1" = "typical angina", "2" = "atypical angina","3"="non_anginal pain", "4"="asymptomatic")
+fbs_key <- c("1"="high fasting blood sugar","0"="low fasting blood sugar")
+restecg_key <- c("0"="normal","1"="ST_T wave abnormality","2"="left ventricular hypertrophy")
+exang_key <- c("1"="yes","0"="no")
+
+
+HGUdata_pre <- HGUdata_raw %>% 
+  mutate(sex=as.factor(recode(sex,!!!sex_key))) %>% 
+  mutate(cp=as.factor(str_replace_all(recode(cp,!!!cp_key),"\\s+","_"))) %>% 
+  mutate(fbs=as.factor(str_replace_all(recode(fbs,!!!fbs_key),"\\s+","_"))) %>% 
+  mutate(restecg=as.factor(str_replace_all(recode(restecg,!!!restecg_key),"\\s+","_"))) %>% 
+  mutate(exang=as.factor(str_replace_all(recode(exang,!!!exang_key),"\\s+","_"))) 
+```
+
+
+# Missing Data
+
+I am assuming that the missing values for age are Missing Completely at Random (MCAR). I will use predictive mean matching (PMM) from the mice package to impute the missing values for age. This method calculates multiple imputations (m=5) for the variable with missing data (age) and for each case where age is missing, pulls from  observed value of age with predicted age nearby to the predicted value of the missing observed entry.
+
+
+```{r,echo=FALSE,include=FALSE}
+set.seed(828)
+imputed_Data <- mice(HGUdata_pre[,names(HGUdata_pre)!="num"], m=5, maxit =100, method = 'pmm', seed = 500)
+HGUdata_complete <- complete(imputed_Data)
+```
+
+# Final Preparations for Modeling
+
+This last step will be to encode dummy variables for the categorical variables sex, cp, fbs, restecg, and exang.
+
+I'll also drop the categorical variables from the dataset, as well as 1 variable from each dummy group (ex. Drop sex_female, keep sex_male).
+
+```{r}
+dummy_sex <- dummy(HGUdata_complete$sex,sep="_")
+dummy_cp <- dummy(HGUdata_complete$cp,sep="_")
+dummy_fbs <- dummy(HGUdata_complete$fbs,sep="_")
+dummy_restecg <- dummy(HGUdata_complete$restecg,sep="_")
+dummy_exang <- dummy(HGUdata_complete$exang,sep="_")
+
+dummies <- cbind(dummy_sex,dummy_cp,dummy_fbs,dummy_restecg,dummy_exang)
+
+
+```
+
+```{r}
+HGUdata_ready <- cbind(HGUdata_complete,dummies,outcome)
+ 
+HGUdata_ready <- HGUdata_ready[ ,c(1,4,5,8,10,12,14,15,16,17,19,21,23,24)]
+
+# For markdown... 
+names(HGUdata_ready)
+cols <- c("age","trestbps","chol","thalach","oldpeak","sex_male","cp_atypical_angina","cp_non_anginal_pain","cp_typical_angina","fbs_high_fasting_blood_sugar","restecg_left_ventricular_hypertrophy","restecg_ST_T_wave_abnormality","exang_yes","outcome")
+names(HGUdata_ready) <- cols
+head(HGUdata_ready)
+```
+
+
+
+## Part 2: Modeling and Results
+
+# Split into Test/Train
+
+I use the sample.split function to split by data into a training and test set. I have allocated 80% of my data to the training set.
+
+```{r}
+set.seed(9595)
+train_ind <- sample.split(HGUdata_ready,SplitRatio = .8)
+train <- subset(HGUdata_ready,train_ind ==TRUE)
+test <- subset(HGUdata_ready,train_ind ==FALSE)
+```
+
+
+# Correlation Check
+
+For one final check against any multicollinearity after encoding dummy variables, I've generated a correlation plot of the variables that will be used in the training data. There appears to be no risk of multicollinearity as no indepedent variable is highly correlated with another.
+
+```{r,warning= FALSE}
+corrplot::corrplot(cor(train[,1:11]), 
+                   order = "hclust", 
+                   tl.cex = .8)
+```
+
+
+
+# Logistic Regression - Train
+
+The glm function can be used to fit a logistic regression model with outcome as the dependent variable.
+
+```{r}
+set.seed(1192)
+model_logistic <- glm(outcome~.,data=train,family = binomial)
+summary(model_logistic)
+
+```
+
+As expected, chest pain type, ST depression, and being male are signifigant variable inputs. Suprisingly, neither maximum heart rate nor age are significant dependent variables. 
+
+
+```{r}
+train$prob_logistic <- predict(model_logistic, type="response")
+classification_point <- .5
+train$pred_class <- as.factor(ifelse(train$prob_logistic>classification_point,1,0))
+
+confusion_matrix_logistic <- confusionMatrix(data = train$pred_class, 
+                                             reference = train$outcome, positive = "1")
+
+confusion_matrix_logistic
+```
+
+I set a prediction threshold at 50%. For entries with >50% predicted probability of heart disease, I declared the predicted class to be "has heart disease".
+
+With these predicted classes generated, a confusion matrix can be generated with the confusionMatrix function and specifying the reference variable (outcome) and the positive case (=1). 
+
+From the function's output, we can see many critical classification metrics pre-calculated.
+Accuracy is 83%, Sensitivity is 77%, Specificity is 88%, and Kappa is .65
+
+
+```{r}
+pr_logistic <- prediction(train$prob_logistic, train$outcome)
+roc_logistic <- performance(pr_logistic, measure = "tpr", x.measure = "fpr")
+auc_logistic <- performance(pr_logistic, measure = "auc")
+auc_value_logistic <- auc_logistic@y.values[[1]]
+auc_value_logistic
+```
+
+```{r,echo=FALSE}
+plot(roc_logistic)+title("Logistic Regression ROC Curve")
+abline(0,1)
+text(.4,.6,paste(round(auc_value_logistic,3)))
+```
+
+Further, I generated an ROC curve for the logistic model. The area under the curve is .904, a strong indicator of a good model fit at any prediction threshold.
+
+
+```{r,echo=FALSE}
+ggplot(train,aes(prob_logistic,fill=as.factor(outcome)))+geom_density(alpha=.7)+ labs(x="Predicted Probabilities")+ guides(fill=guide_legend(title="Outcome"))
+
+```
+
+The above chart shows how the predicted probabilities in the training set closely match the actual heart disease outcomes.
+
+
+# Logistic Regression - Test
+
+
+```{r}
+test$prob <- predict(model_logistic, newdata = test, type="response")
+test$pred_class <- as.factor(ifelse(test$prob>classification_point,1,0))
+confusion_matrix_test <- confusionMatrix(data = test$pred_class, reference = test$outcome,positive="1")
+confusion_matrix_test
+```
+
+Now that we have a champion model, we can see how the model performs on the test holdout. The predict function will generate predicted probabilities on the test data and using our prediction threshold of .5, we can generate a confusion matrix for the model's fit on the test data.
+
+As expected, it's a  similar fit: Accuracy = 78%, Sensitivity = 76%, Specificity = 81%, and Kappa = .57. 
+
+The logistic model does appear to do worse on the test data than the training data at the threshold of .5
+
+However, I'd like to compare the areas under the ROC curve to understand how the model performs at all possible prediction thresholds.
+
+```{r}
+pr_test <- prediction(test$prob, test$outcome)
+roc_test <- performance(pr_test, measure = "tpr", x.measure = "fpr")
+auc_test <- performance(pr_test, measure = "auc")
+auc_value_test <- auc_test@y.values[[1]]
+auc_value_test
+```
+
+```{r,echo=FALSE}
+plot(roc_test)+title("Logistic Regression ROC Curve - Test")
+abline(0,1)
+text(.4,.6,paste(round(auc_value_test,3)))
+plot(roc_logistic,add=TRUE,col="red")
+```
+
+
+In red, I've brought in the ROC curve from the training data fit. There are many more data points in the training data, so the curve has more data points for the true positive rate and false positive rates to change. 
+
+Regardless, I was looking to confirm that the test ROC curve looked visually close to the training ROC curve, and it does.
+
+
+
+# Manually Calculate Accuracy, PPV, NPV, Sensitivity, and Specificity.
+
+As requested in the project prompt, I will manually calculate some classification model performance metrics.
+
+
+```{r}
+
+event <- test$outcome == 1
+predict <- test$prob > classification_point
+TP <- sum(predict & event)
+TN <- sum(!predict & !event)
+FP <- sum(predict & !event)
+FN <- sum(!predict & event)
+n <- length(predict)
+sensitivity_manual <-  TP/(TP+FN)
+specificity_manual <- (TN)/(FP+TN)
+prevalence_manual <- (TP+FN)/n
+accuracy_manual <- (TP+TN)/n
+PPV_manual <- (TP)/(TP+FP)
+NPV_manual <- (specificity_manual*(1-prevalence_manual))/((prevalence_manual*(1-sensitivity_manual)+(1-prevalence_manual)*specificity_manual))
+
+metrics <- list(
+  prevalence_manual = prevalence_manual,
+  accuracy_manual = accuracy_manual, 
+  sensitivity_manual = sensitivity_manual, 
+  specificity_manual = specificity_manual, 
+  PPV_manual = PPV_manual,
+  NPV_manual = NPV_manual
+)
+metrics
+
+```
+
+As expected, the outputs from the test data confusion matrix match the values of the calculated metrics
+
+
+## Part 3: Next Steps
+
+While this is a good model to fit the task at hand, I think it'd be very easy to produce additional models to compare against the logistic regression model. This data ready for LDA regression or a tree-based method. Perhaps another model or the addition of a spline would be able to pick up on the nonlinear relationship between age and heart disease rate.
+
+
+
+
+
+
+
+
+
