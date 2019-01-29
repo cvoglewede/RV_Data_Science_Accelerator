@@ -207,14 +207,14 @@ HGUdata_pre <- HGUdata_raw %>%
 I am assuming that the missing values for age are Missing Completely at Random (MCAR). I will use predictive mean matching (PMM) from the mice package to impute the missing values for age. This method calculates multiple imputations (m=5) for the variable with missing data (age) and for each case where age is missing, pulls from  observed value of age with predicted age nearby to the predicted value of the missing observed entry.
 
 
-```{r,echo=FALSE,include=FALSE}
+```{r,results="hide"}
 set.seed(828)
 imputed_Data <- mice(HGUdata_pre[,names(HGUdata_pre)!="num"], m=5, maxit =100, method = 'pmm', seed = 500)
 HGUdata_complete <- complete(imputed_Data)
 ```
 
 # Final Preparations for Modeling
-
+x
 This last step will be to encode dummy variables for the categorical variables sex, cp, fbs, restecg, and exang.
 
 I'll also drop the categorical variables from the dataset, as well as 1 variable from each dummy group (ex. Drop sex_female, keep sex_male).

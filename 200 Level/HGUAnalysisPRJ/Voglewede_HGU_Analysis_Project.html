@@ -310,6 +310,9 @@ HGUdata_pre &lt;- HGUdata_raw %&gt;%
 <div id="missing-data" class="section level1">
 <h1>Missing Data</h1>
 <p>I am assuming that the missing values for age are Missing Completely at Random (MCAR). I will use predictive mean matching (PMM) from the mice package to impute the missing values for age. This method calculates multiple imputations (m=5) for the variable with missing data (age) and for each case where age is missing, pulls from observed value of age with predicted age nearby to the predicted value of the missing observed entry.</p>
+<pre class="r"><code>set.seed(828)
+imputed_Data &lt;- mice(HGUdata_pre[,names(HGUdata_pre)!=&quot;num&quot;], m=5, maxit =100, method = 'pmm', seed = 500)
+HGUdata_complete &lt;- complete(imputed_Data)</code></pre>
 </div>
 <div id="final-preparations-for-modeling" class="section level1">
 <h1>Final Preparations for Modeling</h1>
